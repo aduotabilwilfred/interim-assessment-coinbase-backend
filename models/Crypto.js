@@ -25,7 +25,7 @@ const cryptoSchema = new mongoose.Schema({
     required: true
   }
 }, {
-  timestamps: true // This will automatically add createdAt, useful for 'New Listings'
+  timestamps: true
 });
 
 module.exports = mongoose.model('Crypto', cryptoSchema);

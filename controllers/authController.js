@@ -2,7 +2,6 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// Register a new user
 exports.register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -11,23 +10,15 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Please provide all required fields (name, email, password).' });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User with this email already exists.' });
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user
-    const user = new User({
-      name,
-      email,
-      password: hashedPassword
-    });
-
+    const user = new User({ name, email, password: hashedPassword });
     await user.save();
 
     res.status(201).json({ message: 'User registered successfully.' });
@@ -37,7 +28,6 @@ exports.register = async (req, res) => {
   }
 };
 
-// Login user
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -46,36 +36,34 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Please provide email and password.' });
     }
 
-    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
-    // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
-    // Generate JWT
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
 
-    // Set HTTP-only cookie
+    const isProduction = process.env.NODE_ENV === 'production';
+
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000 // 1 day
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'strict',
+      maxAge: 24 * 60 * 60 * 1000
     });
 
     res.json({
       message: 'Login successful.',
-      token, // Also sending token in body as fallback/alternative for frontend
+      token,
       user: {
         id: user._id,
         name: user.name,
